@@ -9,7 +9,6 @@ import me.ultrapanda.utils.LuaCipher;
 import me.ultrapanda.web.AtelierWeb;
 
 import java.io.File;
-import java.io.IOException;
 
 public class Atelier {
     public static AtelierLogger atelierLogger = new AtelierLogger();
@@ -23,7 +22,7 @@ public class Atelier {
 
     public static String VERSION = "1.3";
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         luaCipher = new LuaCipher(new File("cipher.lua"));
         crypto = new Crypto();
         atelierWeb.start();
