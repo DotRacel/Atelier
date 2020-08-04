@@ -1,14 +1,10 @@
 package me.ultrapanda.utils;
 
-import me.ultrapanda.Atelier;
-import me.ultrapanda.logger.AtelierLogger;
-
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 
 public class StringUtil {
-    private final AtelierLogger logger = Atelier.atelierLogger;
 
     public static String generateRandomKey(Crypto crypto) {
         try {

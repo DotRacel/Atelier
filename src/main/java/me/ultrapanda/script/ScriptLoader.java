@@ -13,12 +13,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ScriptLoader {
-    private final AtelierLogger logger = Atelier.atelierLogger;
-    private final AtelierDatabase database = Atelier.atelierDatabase;
+    private final static AtelierLogger logger = Atelier.atelierLogger;
+    private final static AtelierDatabase database = Atelier.atelierDatabase;
 
     private final File baseFolder;
 
-    private final List<LoadedRole> roleScripts = new ArrayList<>();
+    private List<LoadedRole> roleScripts = new ArrayList<>();
 
     public ScriptLoader(File file){
         this.baseFolder = file;
@@ -27,7 +27,7 @@ public class ScriptLoader {
     }
 
     public void refresh() {
-        roleScripts.clear();
+        roleScripts = new ArrayList<>();
 
         int count = 0;
 

@@ -10,9 +10,8 @@ import java.io.IOException;
 
 public class AtelierConsole {
     private final String prompt;
-    private ConsoleThread consoleThread;
 
-    private final AtelierLogger logger = Atelier.atelierLogger;
+    private static final AtelierLogger logger = Atelier.atelierLogger;
 
     public AtelierConsole(String prompt) {
         this.prompt = prompt;
@@ -29,7 +28,7 @@ public class AtelierConsole {
             System.exit(-1);
         }
 
-        consoleThread = new ConsoleThread(prompt, terminal, LineReaderBuilder.builder().terminal(terminal).build());
+        ConsoleThread consoleThread = new ConsoleThread(prompt, terminal, LineReaderBuilder.builder().terminal(terminal).build());
         consoleThread.start();
     }
 }

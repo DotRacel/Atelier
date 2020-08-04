@@ -4,6 +4,7 @@ import me.ultrapanda.console.AtelierConsole;
 import me.ultrapanda.database.AtelierDatabase;
 import me.ultrapanda.logger.AtelierLogger;
 import me.ultrapanda.script.ScriptLoader;
+import me.ultrapanda.utils.Crypto;
 import me.ultrapanda.utils.LuaCipher;
 import me.ultrapanda.web.AtelierWeb;
 
@@ -18,11 +19,13 @@ public class Atelier {
 
     public static ScriptLoader scriptLoader;
     public static LuaCipher luaCipher;
+    public static Crypto crypto;
 
     public static String VERSION = "1.3";
 
     public static void main(String[] args) throws IOException {
         luaCipher = new LuaCipher(new File("cipher.lua"));
+        crypto = new Crypto();
         atelierWeb.start();
 
         atelierLogger.info("正在启动 Atelier 服务 ...");

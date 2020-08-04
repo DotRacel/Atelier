@@ -9,7 +9,7 @@ import org.luaj.vm2.lib.jse.JsePlatform;
 import java.io.File;
 
 public class LuaCipher {
-    private final AtelierLogger logger = Atelier.atelierLogger;
+    private final static AtelierLogger logger = Atelier.atelierLogger;
 
     private final LuaValue ENCRYPT;
     private final LuaValue DECRYPT;

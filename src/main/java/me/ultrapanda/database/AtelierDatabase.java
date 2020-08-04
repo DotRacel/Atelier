@@ -28,8 +28,8 @@ public class AtelierDatabase {
 
     private MongoDatabase mongoDatabase;
 
-    private final AtelierLogger logger = Atelier.atelierLogger;
-    private final Crypto crypto = new Crypto();
+    private static final AtelierLogger logger = Atelier.atelierLogger;
+    private static final Crypto crypto = Atelier.crypto;
 
     public List<Role> cachedRoles = new ArrayList<>();
 

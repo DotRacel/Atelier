@@ -78,6 +78,12 @@
       <version>3.0.1</version>
     </dependency>
 
+    <!-- https://mvnrepository.com/artifact/org.jetbrains/annotations -->
+    <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
+      <version>19.0.0</version>
+    </dependency>
 
   </dependencies>
 

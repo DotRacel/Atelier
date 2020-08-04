@@ -19,6 +19,9 @@ import me.ultrapanda.utils.LuaCipher;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static me.ultrapanda.Atelier.scriptLoader;
 
@@ -27,35 +30,30 @@ public class AtelierController {
     private final static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final static int staticKey = 812934;
 
-    private final static Crypto crypto = new Crypto();
+    private final static Crypto crypto = Atelier.crypto;
     private final static LuaCipher cipher = Atelier.luaCipher;
 
-    private final AtelierDatabase atelierDatabase = Atelier.atelierDatabase;
-    private final AtelierLogger logger = Atelier.atelierLogger;
-
-    // http://localhost:5555/atelier?request=801&username=UltraPanda&password=1C94-E051-2930-88FB-36B4-7A5A-F1F1-4E6B&hwid=testhwid&script=lagsyncupdated&signature=d0e06723744f7f57bf4691550476a73b
+    private final static AtelierDatabase atelierDatabase = Atelier.atelierDatabase;
+    private final static AtelierLogger logger = Atelier.atelierLogger;
 
     @Route(value = "/atelier", method = HttpMethod.GET)
     public void atelier(RouteContext ctx){
+        Map<String, String> parameters = getParameters(ctx.parameters());
+
         try{
-            String requestType = ctx.parameters().get("request").get(0);
+            // 检测请求类型
+            String requestType = parameters.get("request");
             if(requestType == null || !(requestType.equals(RequestType.GET_LIST) || requestType.equals(RequestType.GET_LUA))){
                 ctx.text(ResponseStatus.BAD_PARAMETERS);
                 return;
             }
 
-            if(ctx.parameters().size() < 5){
-                ctx.text(ResponseStatus.BAD_PARAMETERS);
-                return;
-            }
-
-
-            String username = ctx.parameters().get("username").get(0);
-            String password = ctx.parameters().get("password").get(0);
-            String hwid = ctx.parameters().get("hwid").get(0);
-            String signature = ctx.parameters().get("signature").get(0);
-            String time = ctx.parameters().get("time").get(0);
-            String key = ctx.parameters().get("key").get(0);
+            String username = parameters.get("username");
+            String password = parameters.get("password");
+            String hwid = parameters.get("hwid");
+            String signature = parameters.get("signature");
+            String time = parameters.get("time");
+            String key = parameters.get("key");
 
             if(username == null || password == null || signature == null || time == null || key == null){
                 ctx.text(ResponseStatus.BAD_REQUEST);
@@ -162,6 +160,16 @@ public class AtelierController {
 
     private boolean validSignature(String username, String password, String hwid, String requestType, String time, String signature) throws NoSuchAlgorithmException {
         return crypto.encryptMD5ToString(username + ":" + requestType + ":" + password + ":" + "SIGNATURE" + ":" + hwid + ":" + time).equals(signature);
+    }
+
+    private Map<String, String> getParameters(Map<String, List<String>> parameters) {
+        Map<String, String> toReturn = new HashMap<>();
+
+        for(String key : parameters.keySet()){
+            toReturn.put(key, parameters.get(key).get(0));
+        }
+
+        return toReturn;
     }
 
     @SneakyThrows
