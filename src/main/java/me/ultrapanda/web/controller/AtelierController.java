@@ -30,7 +30,7 @@ public class AtelierController {
     private final static SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final static int staticKey = 812934;
 
-    private final static Crypto crypto = Atelier.crypto;
+    private final static Crypto crypto = new Crypto();
     private final static LuaCipher cipher = Atelier.luaCipher;
 
     private final static AtelierDatabase atelierDatabase = Atelier.atelierDatabase;
