@@ -1,7 +1,7 @@
 client.exec("clear")
 
 local vel = {
-    version = "1.3",
+    version = "1.4",
     start_time = client.unix_time()
 }
 
@@ -15,6 +15,12 @@ local userinfo = {
 
 local lualist = {}
 local loaded_lualist = {}
+
+local config_text, config_needs_load = nil, true
+
+local references = {
+    import_from_clipboard = ui.reference('CONFIG', 'Presets', 'Import from clipboard')
+}
 
 local ffi = require("ffi")
 local bit = require("bit")
@@ -678,17 +684,35 @@ end
 -- custom encryption end
 --
 
+local ffi_cast = ffi.cast
+
+ffi.cdef [[
+typedef int(__thiscall* get_clipboard_text_count)(void*);
+typedef void(__thiscall* set_clipboard_text)(void*, const char*, int);
+typedef void(__thiscall* get_clipboard_text)(void*, int, const char*, int);
+]]
+
+--[ VGUI_System ]--
+local VGUI_System010 =  client.create_interface("vgui2.dll", "VGUI_System010") or print( "Error finding VGUI_System010")
+local VGUI_System = ffi_cast( ffi.typeof( "void***" ), VGUI_System010 )
+
+local get_clipboard_text_count = ffi_cast( "get_clipboard_text_count", VGUI_System[ 0 ][ 7 ] ) or print( "get_clipboard_text_count Invalid")
+local set_clipboard_text = ffi_cast( "set_clipboard_text", VGUI_System[ 0 ][ 9 ] ) or print( "set_clipboard_text Invalid")
+local get_clipboard_text = ffi_cast( "get_clipboard_text", VGUI_System[ 0 ][ 11 ] ) or print( "get_clipboard_text Invalid")
+--[ VGUI_System ]--
+
 -- library functions start
 
---local atelier_api = 'http://110.42.10.216:4755/atelier'
---local atelier_version = 'http://110.42.10.216:4755/version'
+local atelier_api = 'http://110.42.10.216:4755/atelier'
+local atelier_version = 'http://110.42.10.216:4755/version'
 
-local atelier_api = 'http://localhost:4755/atelier'
-local atelier_version = 'http://localhost:4755/version'
+--local atelier_api = 'http://localhost:4755/atelier'
+--local atelier_version = 'http://localhost:4755/version'
 
 local request_type = {
     get_list = '100',
     get_lua = '200',
+    get_config = '300'
 }
 
 local response_status = {
@@ -703,7 +727,47 @@ local response_status = {
     USER_BANNED = '503',
 
     SCRIPT_UNKNOWN = '600',
+    CONFIG_UNKNOWN = '601',
 }
+
+local extra_log = function(...)
+    client.color_log(0, 255, 255, "[ VEL Loader ] \0")
+    local data = { ... }
+
+    for i=1, #data do
+        client.color_log(data[i][1], data[i][2], data[i][3],  string.format('%s\0', data[i][4]))
+
+        if i == #data then
+            client.color_log(255, 255, 255, ' ')
+        end
+    end
+end
+
+local create_safe_callback = function(name, func)
+    local get_func_index = function(fn)
+        return ffi.cast("int*", ffi.cast(ffi.typeof("void*(__thiscall*)(void*)"), fn))[0]
+    end
+
+    local DEC_HEX = function(IN)
+        local B,K,OUT,I,D=16,"0123456789ABCDEF","",0
+        while IN>0 do
+            I=I+1
+            IN,D=math.floor(IN/B),math.fmod(IN,B)+1
+            OUT=string.sub(K,D,D)..OUT
+        end
+        return OUT
+    end
+
+    extra_log({ 255, 255, 255, 'Creating safe ' }, { 0, 255, 255, name .. ' ' }, { 255, 255, 255, 'callback ' }, { 0, 255, 255, string.format('(0x%s)', DEC_HEX(get_func_index(func))) })
+
+    client.delay_call(0.1, function()
+        client.set_event_callback(name, func)
+    end)
+end
+
+local function set_clipboard(content)
+    set_clipboard_text(VGUI_System, content, content:len())
+end
 
 local function md5_encode(string)
     local m = md5.new()
@@ -743,8 +807,7 @@ end
 local creds_name = "VEL.creds"
 local function read_creds()
     if not(is_file_exist(creds_name)) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, "VEL.creds file doesn't exisit, exiting ...")
+        extra_log({255, 255, 255, "VEL.creds"}, {255, 0, 0, " file doesn't exisit, exiting ..."})
         return nil
     end
 
@@ -764,40 +827,34 @@ end
 
 local function check_response(body)
     if(body == response_status.BAD_PARAMETERS) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, 'Bad request during sending request, are you trying to crack VEL loader? lol.')
+        extra_log({255, 0, 0, 'Bad request during sending request, are you trying to crack VEL loader? lol.'})
         return false
     elseif(body == response_status.BAD_REQUEST) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, 'Bad request during sending request, are you trying to crack VEL loader? lol.')
+        extra_log({255, 0, 0, 'Bad request during sending request, are you trying to crack VEL loader? lol.'})
         return false
     elseif(body == response_status.INVALID_SIGNATURE) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, 'Bad request during sending request, are you trying to crack VEL loader? lol.')
+        extra_log({255, 0, 0, 'Bad request during sending request, are you trying to crack VEL loader? lol.'})
         return false
     elseif(body == response_status.USER_UNKNOWN) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, "User doesn't exist. Invalid VEL.creds?")
+        extra_log({255, 0, 0, 'User doesn\'t exist. Invalid VEL.creds ?'})
         return false
     elseif(body == response_status.USER_WRONG_PASSWORD) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, "Invalid VEL.creds.")
+        extra_log({255, 0, 0, 'Invalid VEL.creds.'})
         return false
     elseif(body == response_status.USER_WRONG_HWID) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, "Invalid Hardware ID. Send a request to administrator to reset your hwid.")
+        extra_log({255, 0, 0, 'Invalid Hardware ID. Send a request to administrator to reset your hwid.'})
         return false
     elseif(body == response_status.USER_BANNED) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, "User is banned.")
+        extra_log({255, 0, 0, 'User is banned.'})
         return false
     elseif(body == response_status.SCRIPT_UNKNOWN) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, "Script requested is unknown, please try reloading the VEL loader.")
+        extra_log({255, 0, 0, 'Script requested is unknown, please try reloading the VEL loader.'})
         return false
     elseif(body == response_status.INTERNAL_ERROR)then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, "Occured an error in the server side. (Internal Server Error)")
+        extra_log({255, 0, 0, 'Occurred an error in the server side. (Internal Server Error)'})
+        return false
+    elseif(body == response_status.CONFIG_UNKNOWN) then
+        extra_log({255, 0, 0, 'No available config for your role.'})
         return false
     else
         return true
@@ -893,7 +950,7 @@ local function generate_getscript_parameters(userinfo, scriptname)
     local options = {
         network_timeout = 8,
         absolute_timeout = 20,
-        priority = 'prioritize',
+        priority = 'defer',
     
         params = {
             ["request"] = request_type.get_lua,
@@ -916,25 +973,53 @@ local function generate_getscript_parameters(userinfo, scriptname)
     return options
 end
 
+local function generate_getconfig_parameters(userinfo)
+    local options = {
+        network_timeout = 8,
+        absolute_timeout = 20,
+        priority = 'defer',
+
+        params = {
+            ["request"] = request_type.get_config,
+            ["username"] = userinfo.username,
+            ["password"] = userinfo.password,
+            ["hwid"] = generateHWID(),
+            ["time"] = vel.start_time,
+            ["signature"] = generate_signature(request_type.get_config, userinfo),
+            ["key"] = random_key,
+        }
+    }
+
+    if (security_check()) then
+        options.user_agent_info = "yes"
+    else
+        options.user_agent_info = "no"
+    end
+
+    return options
+end
+
 local function loadscript(scriptname)
     if(scriptname == '') then return end
 
     loaded_lualist[table.getn(loaded_lualist) + 1] = scriptname
 
-    client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-    client.color_log(255, 255, 255, "Attempt to load \0")
-    client.color_log(0, 255, 255, scriptname .. " \0")
-    client.color_log(255, 255, 255, "from VEL server.")
+    extra_log({255, 255, 255, "Attempt to load "},
+              {0, 255, 255, scriptname},
+              {255, 255, 255, " from VEL server."})
     
     http.request('GET', atelier_api, generate_getscript_parameters(userinfo, scriptname), function(success, response)
         if not(success) then
-            log(255, 0, 0, "Failed to load script " .. scriptname .. " due to unknown reason.")
+            extra_log({255, 0, 0, "Failed to load script "},
+                      {255, 255, 255, scriptname},
+                      {255, 0, 0, " due to unknown reason."})
             return
         end
 
         if(check_response(response.body) == false) then
-            client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-            client.color_log(255, 0, 0, 'An error occured during loading script ' .. scriptname .. ' from server.')
+            extra_log({255, 0, 0, "An error occured during loading script "},
+                    {255, 255, 255, scriptname},
+                    {255, 0, 0, " from VEL server."})
             return
         end
 
@@ -947,12 +1032,10 @@ local function loadscript(scriptname)
         end)
 
         if(status) then
-            client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-            client.color_log(0, 255, 255, scriptname .. " \0")
-            client.color_log(255, 255, 255, "is successfully loaded from VEL server.")
+            extra_log({0, 255, 255, scriptname},
+                     {255, 255, 255, " is successfully loaded from VEL server."})
         else
-            client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-            client.color_log(255, 0, 0, "An error occured during loading script from VEL server. Please contact administrator.")
+            extra_log({255, 0, 0, "An error occured during loading script from VEL server. Please contact administrator."})
             print(error)
         end
     end)
@@ -1002,6 +1085,20 @@ local function is_include(table, value)
     return false
 end
 
+local function check_success(success, timed_out)
+    if not(success) then
+        if(timed_out ~= nil) then
+            extra_log({255, 0, 0, 'Failed to connect to the server due to timed out, please try again.'})
+            return false
+        else
+            extra_log({255, 0, 0, 'Failed to connect to the server, please try again.'})
+            return false
+        end
+    else
+        return true
+    end
+end
+
 -- library functions end
 
 -- read creds
@@ -1019,14 +1116,13 @@ end
 
 -- menu items start
 
-header = ui.new_label('CONFIG', 'Presets', "|-----------------------------------------|")
-label_1 = ui.new_label('CONFIG', 'Presets', "                   VEL Loader                  ")
+header = ui.new_label('CONFIG', 'Presets', "〓〓〓〓〓〓〓〓 VEL Loader 〓〓〓〓〓〓〓〓")
 
 local menu_items =  {
     username = ui.new_label('CONFIG', 'Presets', ' '),
     role = ui.new_label('CONFIG', 'Presets', ' '),
     scripts_loaded = ui.new_label('CONFIG', 'Presets', ' '),
-    footer = ui.new_label('CONFIG', 'Presets', "|-----------------------------------------|"),
+    footer = ui.new_label('CONFIG', 'Presets', "〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓"),
 }
 
 local function set_visible(boolean)
@@ -1041,26 +1137,40 @@ set_visible(false)
 
 -- menu items end
 
+-- online config loading=
+local function get_config()
+    http.request('GET', atelier_api, generate_getconfig_parameters(userinfo), function(success, response)
+        if not(check_success(success, response.timed_out)) then
+            return
+        end
+
+        if(check_response(response.body) == false) then
+            return
+        end
+
+        local status, data = pcall(function()
+            return decrypt(response.body, random_key, static_key)
+        end)
+
+        if(status) then
+            config_text = data
+        else
+            extra_log({255, 0, 0, 'An error occurred during decrypting role config text from server.'})
+            return
+        end
+    end)
+end
+
 local function get_lualist()
     
 -- lua scripts list getting
 
 http.request('GET', atelier_api, generate_getlist_parameters(userinfo), function(success, response)
-    if not(success) then
-        if(response.timed_out ~= nil) then
-            client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-            client.color_log(255, 0, 0, 'Failed to connect to the server due to timed out, please try again.')
-        else
-            client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-            client.color_log(255, 0, 0, 'Failed to connect to the server, please try again.')
-        end
-
-        return 
+    if not(check_success(success, response.timed_out)) then
+        return
     end
 
     if(check_response(response.body) == false) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, 'An error occured during getting scripts list from server.')
         return
     end
 
@@ -1073,13 +1183,13 @@ http.request('GET', atelier_api, generate_getlist_parameters(userinfo), function
         end
     end
 
-    ui.set(menu_items.username, "Username: " .. userinfo.username)
-    ui.set(menu_items.role, "Role: " .. userinfo.role)
-    ui.set(menu_items.scripts_loaded, table.getn(lualist) .. " script(s) loaded.")
+    ui.set(menu_items.username, "| Username: " .. userinfo.username)
+    ui.set(menu_items.role, "| Role: " .. userinfo.role)
+    ui.set(menu_items.scripts_loaded, "| " ..  table.getn(lualist) .. " script(s) loaded.")
 
     set_visible(true)
 
-    menu_items.scripts = ui.new_multiselect('CONFIG', 'Presets', 'Scripts', lualist)
+    menu_items.scripts = ui.new_multiselect('CONFIG', 'Presets', '| VEL Scripts', lualist)
 
     local enabled = loadconfig()
     ui.set(menu_items.scripts, enabled)
@@ -1089,54 +1199,69 @@ http.request('GET', atelier_api, generate_getlist_parameters(userinfo), function
 
     local function load_scripts()
         local enabled_scripts = ui.get(menu_items.scripts)
-        for i,v  in pairs(enabled_scripts) do
+        for _,v  in pairs(enabled_scripts) do
             if not(isloaded(v)) then
                 if(is_include(lualist, v)) then 
                     loadscript(v)
                 end
             end
         end
-    
+
         saveconfig(enabled_scripts)
+        config_needs_load = true
     end
 
     -- handle the callback
     ui.set_callback(menu_items.scripts, load_scripts)
+    get_config()
     load_scripts()
 end)
 end
 
 -- vel loader version checking start
 
-client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-client.color_log(255, 255, 255, "Attempt to check loader version ...")
+extra_log({255, 255, 255, "Attempt to check loader version ..."})
 
 http.request('GET', atelier_version, generate_getversion_parameters(), function(success, response)
-    if not(success) then
-        if(response.timed_out ~= nil) then
-            client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-            client.color_log(255, 0, 0, 'Failed to connect to the server due to timed out, please try again.')
-        else
-            client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-            client.color_log(255, 0, 0, 'Failed to connect to the server, please try again.')
-        end
-
-        return 
+    if not(check_success(success, response.timed_out)) then
+        return
     end
 
     if(response.body == vel.version) then
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 255, 255, "VEL Loader is the \0")
-        client.color_log(0, 255, 0, "latest\0")
-        client.color_log(255, 255, 255, " version")
+        extra_log({255, 255, 255, "VEL Loader is the "},
+                  {0, 255, 0, "latest"},
+                  {255, 255, 255, " version"})
+
         get_lualist()
     else
-        client.color_log(0, 255, 255, "[ VEL Loader ] \0")
-        client.color_log(255, 0, 0, "VEL Loader is outdated, please download the latest loader!")
+        extra_log({255, 0, 0, "VEL Loader is outdated, please download the latest loader!"})
     end
 end)
 
 -- vel loader version checking end
+
+-- config load period
+
+local function check_and_loadconfig()
+    if(config_needs_load and config_text ~= nil) then
+        -- Load online config
+        set_clipboard(config_text)
+        ui.set(references.import_from_clipboard, true)
+        set_clipboard('')
+        extra_log({255, 255, 255, "Config is "},
+                {0, 255, 0, "loaded"},
+                {255, 255, 255, " from VEL server."})
+        --
+
+        config_needs_load = false
+    end
+
+    client.delay_call(3, check_and_loadconfig)
+end
+
+check_and_loadconfig()
+
+--
 
 -- getting end
 
@@ -1193,4 +1318,6 @@ local g_paint_watermark = function()
     end)
 end
 
-client.set_event_callback("paint_ui", g_paint_watermark)
+client.delay_call(10, function()
+    create_safe_callback("paint_ui", g_paint_watermark)
+end)

@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static me.ultrapanda.Atelier.configLoader;
 import static me.ultrapanda.Atelier.scriptLoader;
 
 @Path
@@ -43,7 +44,7 @@ public class AtelierController {
         try{
             // 检测请求类型
             String requestType = parameters.get("request");
-            if(requestType == null || !(requestType.equals(RequestType.GET_LIST) || requestType.equals(RequestType.GET_LUA))){
+            if(requestType == null || !(requestType.equals(RequestType.GET_LIST) || requestType.equals(RequestType.GET_LUA) || requestType.equals(RequestType.GET_CONFIG))){
                 ctx.text(ResponseStatus.BAD_PARAMETERS);
                 return;
             }
@@ -145,16 +146,30 @@ public class AtelierController {
 
                     ctx.text(cipher.encrypt(scriptObject.toBase64(), staticKey, Integer.parseInt(key)));
                     break;
+                case RequestType.GET_CONFIG:
+                    String config = configLoader.getConfigByName(user.getRole());
+
+                    if(config == null || config.isEmpty()) {
+                        ctx.text(ResponseStatus.CONFIG_UNKNOWN);
+                    }else {
+                        // 这里的 static key 和 random key 与其他情况下是本末倒置的.
+                        ctx.text(cipher.encrypt(config, Integer.parseInt(key), staticKey));
+                    }
+
+                    break;
             }
         }catch (NoSuchAlgorithmException noSuchAlgorithmException){
             logger.warn("出现无效算法错误.");
             noSuchAlgorithmException.printStackTrace();
+            ctx.text(ResponseStatus.INTERNAL_ERROR);
         }catch (NullPointerException nullPointerException){
             logger.warn("出现空指针错误.");
             nullPointerException.printStackTrace();
+            ctx.text(ResponseStatus.INTERNAL_ERROR);
         }catch (Exception exception){
             logger.warn("出现未预料的错误.");
             exception.printStackTrace();
+            ctx.text(ResponseStatus.INTERNAL_ERROR);
         }
     }
 
@@ -170,11 +185,5 @@ public class AtelierController {
         }
 
         return toReturn;
-    }
-
-    @SneakyThrows
-    @Route(value = "/version", method = HttpMethod.GET)
-    public void version(RouteContext ctx){
-        ctx.text(Atelier.VERSION);
     }
 }

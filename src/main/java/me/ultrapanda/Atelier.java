@@ -2,8 +2,10 @@ package me.ultrapanda;
 
 import me.ultrapanda.console.AtelierConsole;
 import me.ultrapanda.database.AtelierDatabase;
+import me.ultrapanda.loader.Loader;
+import me.ultrapanda.loader.impl.ConfigLoader;
 import me.ultrapanda.logger.AtelierLogger;
-import me.ultrapanda.script.ScriptLoader;
+import me.ultrapanda.loader.impl.ScriptLoader;
 import me.ultrapanda.utils.Crypto;
 import me.ultrapanda.utils.LuaCipher;
 import me.ultrapanda.web.AtelierWeb;
@@ -17,20 +19,29 @@ public class Atelier {
     public static AtelierWeb atelierWeb = new AtelierWeb(4755);
 
     public static ScriptLoader scriptLoader;
+    public static ConfigLoader configLoader;
+
     public static LuaCipher luaCipher;
     public static Crypto crypto;
 
-    public static String VERSION = "1.3";
+    public static String VERSION = "1.4";
+    public static File BASE_FOLDER = new File("");
 
     public static void main(String[] args) {
+        // 加密
         luaCipher = new LuaCipher(new File("cipher.lua"));
         crypto = new Crypto();
+
+        // 网页
         atelierWeb.start();
 
+        // 基础
         atelierLogger.info("正在启动 Atelier 服务 ...");
-        atelierConsole.start(); // 初始化控制台
-        atelierDatabase.connect(); // 连接数据库
+        atelierConsole.start();
+        atelierDatabase.connect();
 
-        scriptLoader = new ScriptLoader(new File(""));
+        // 加载
+        scriptLoader = new ScriptLoader(BASE_FOLDER);
+        configLoader = new ConfigLoader(BASE_FOLDER);
     }
 }

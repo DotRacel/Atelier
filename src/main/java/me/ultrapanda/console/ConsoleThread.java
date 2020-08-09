@@ -183,6 +183,7 @@ public class ConsoleThread extends Thread {
                         break;
                     case "refresh":
                         Atelier.scriptLoader.refresh();
+                        Atelier.configLoader.refresh();
                         break;
                     case "createrole":
                         if(arg.length != 2 || arg[1] == null){

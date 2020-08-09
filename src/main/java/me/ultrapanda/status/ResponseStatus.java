@@ -12,4 +12,5 @@ public class ResponseStatus {
     public final static String USER_BANNED = "503";
 
     public final static String SCRIPT_UNKNOWN = "600";
+    public final static String CONFIG_UNKNOWN = "601";
 }

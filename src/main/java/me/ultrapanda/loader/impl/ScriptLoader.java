@@ -1,10 +1,12 @@
-package me.ultrapanda.script;
+package me.ultrapanda.loader.impl;
 
 import me.ultrapanda.Atelier;
 import me.ultrapanda.database.AtelierDatabase;
+import me.ultrapanda.loader.Loader;
 import me.ultrapanda.logger.AtelierLogger;
 import me.ultrapanda.role.LoadedRole;
 import me.ultrapanda.role.Role;
+import me.ultrapanda.script.ScriptObject;
 import me.ultrapanda.utils.FileUtil;
 
 import java.io.File;
@@ -12,7 +14,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ScriptLoader {
+public class ScriptLoader implements Loader {
     private final static AtelierLogger logger = Atelier.atelierLogger;
     private final static AtelierDatabase database = Atelier.atelierDatabase;
 
@@ -26,6 +28,7 @@ public class ScriptLoader {
         refresh();
     }
 
+    @Override
     public void refresh() {
         roleScripts = new ArrayList<>();
 
@@ -57,7 +60,9 @@ public class ScriptLoader {
         List<ScriptObject> scriptObjects = new ArrayList<>();
 
         for(File file : files){
-            scriptObjects.add(new ScriptObject(file.getName().split("\\.")[0], FileUtil.toByteArray(file)));
+            if(file.getName().endsWith(".lua") || file.getName().endsWith(".ljbc")){
+                scriptObjects.add(new ScriptObject(file.getName().split("\\.")[0], FileUtil.toByteArray(file)));
+            }
         }
 
         return scriptObjects;
