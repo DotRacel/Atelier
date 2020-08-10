@@ -1114,12 +1114,11 @@ local function loadscript(scriptname)
 end
 
 local function loadconfig()
-    local enabled = {}
-
     if not exec_existfl(fs_raw, "vel.cfg", "DEFAULT_WRITE_PATH") then
         return ''
     else
         local data = split(read_file("vel.cfg", "DEFAULT_WRITE_PATH"), "\n")
+
 
         for i,v in pairs(data) do
             if not(v == '' or v == ' ') then
@@ -1132,7 +1131,7 @@ local function loadconfig()
 end
 
 local function saveconfig(enabled)
-    local data = ''
+    local data = ""
     
     for i,v in pairs(enabled) do
         data = data .. v .. "\n"
@@ -1181,7 +1180,6 @@ local function upload_config()
             return
         end
 
-        print(response.body)
         extra_log({0, 255, 0, "Successfully uploaded the config to the server for your role."})
     end)
 end
@@ -1357,7 +1355,9 @@ local function check_and_loadconfig()
     if(config_needs_load and config_text ~= nil) then
         -- Load online config
         set_clipboard(config_text)
+
         ui.set(references.import_from_clipboard, true)
+
         set_clipboard('')
         extra_log({255, 255, 255, "Config is "},
                 {0, 255, 0, "loaded"},
