@@ -26,7 +26,7 @@ public class Atelier {
     public static LuaCipher luaCipher;
     public static Crypto crypto;
 
-    public static String VERSION = "1.4";
+    public static String VERSION = "1.5";
     public static File BASE_FOLDER = new File("");
 
     public static void main(String[] args) {
