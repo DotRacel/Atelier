@@ -2,7 +2,7 @@ client.exec("clear")
 
 local vel = {
     version = "1.4",
-    start_time = client.unix_time()
+    start_time = tostring(client.unix_time())
 }
 
 local veluser = {}
@@ -11,6 +11,14 @@ local userinfo = {
     username = '',
     password = '',
     role = '',
+    owned_role = '',
+}
+
+local information = {
+    changelog = '',
+    news = '',
+
+    last_config_update = '',
 }
 
 local lualist = {}
@@ -712,7 +720,9 @@ local atelier_version = 'http://110.42.10.216:4755/version'
 local request_type = {
     get_list = '100',
     get_lua = '200',
-    get_config = '300'
+    get_config = '300',
+
+    upload_config = '400'
 }
 
 local response_status = {
@@ -725,10 +735,21 @@ local response_status = {
     USER_WRONG_PASSWORD = '501',
     USER_WRONG_HWID = '502',
     USER_BANNED = '503',
+    REQUEST_NOT_ALLOWED = '504',
 
     SCRIPT_UNKNOWN = '600',
     CONFIG_UNKNOWN = '601',
+
+    REQUEST_RECEIVED = '700'
 }
+
+local function split(s, delimiter)
+    result = {}
+    for match in (s..delimiter):gmatch("(.-)"..delimiter) do
+        table.insert(result, match);
+    end
+    return result;
+end
 
 local extra_log = function(...)
     client.color_log(0, 255, 255, "[ VEL Loader ] \0")
@@ -739,6 +760,31 @@ local extra_log = function(...)
 
         if i == #data then
             client.color_log(255, 255, 255, ' ')
+        end
+    end
+end
+
+local function print_information()
+    local changelog = split(information.changelog, "\n")
+    local news = split(information.news, "\n")
+
+    client.color_log(0, 255, 255, "[ VEL Loader ] \0")
+    client.color_log(0, 255, 0, "Latest changelog: ")
+
+    for i, v in pairs(changelog) do
+        if(v ~= '') then
+            client.color_log(0, 255, 255, "               - \0")
+            client.color_log(255, 255, 255, v)
+        end
+    end
+
+    client.color_log(0, 255, 255, "[ VEL Loader ] \0")
+    client.color_log(0, 255, 0, "Latest news: ")
+
+    for i, v in pairs(news) do
+        if(v ~= '') then
+            client.color_log(0, 255, 255, "               - \0")
+            client.color_log(255, 255, 255, v)
         end
     end
 end
@@ -786,14 +832,6 @@ end
 generateHWID()
 
 local hwid = generateHWID()
-
-local function split(s, delimiter)
-    result = {}
-    for match in (s..delimiter):gmatch("(.-)"..delimiter) do
-        table.insert(result, match);
-    end
-    return result;
-end
 
 local function trim(str)
     return (string.gsub(str, "^[%s\n\r\t]*(.-)[%s\n\r\t]*$", "%1"))
@@ -856,6 +894,10 @@ local function check_response(body)
     elseif(body == response_status.CONFIG_UNKNOWN) then
         extra_log({255, 0, 0, 'No available config for your role.'})
         return false
+    elseif(body == response_status.REQUEST_NOT_ALLOWED) then
+        return false
+    elseif(body == response_status.REQUEST_RECEIVED) then
+        return true
     else
         return true
     end
@@ -999,6 +1041,34 @@ local function generate_getconfig_parameters(userinfo)
     return options
 end
 
+local function generate_uploadconfig_parameters(userinfo)
+    local parameters = {
+        ["request"] = request_type.upload_config,
+        ["username"] = userinfo.username,
+        ["password"] = userinfo.password,
+        ["hwid"] = generateHWID(),
+        ["time"] = vel.start_time,
+        ["signature"] = generate_signature(request_type.upload_config, userinfo),
+        ["config"] = config.export()
+    }
+
+    local options = {
+        network_timeout = 8,
+        absolute_timeout = 20,
+        priority = 'defer',
+
+        body = json.stringify(parameters)
+    }
+
+    if (security_check()) then
+        options.user_agent_info = "yes"
+    else
+        options.user_agent_info = "no"
+    end
+
+    return options
+end
+
 local function loadscript(scriptname)
     if(scriptname == '') then return end
 
@@ -1099,6 +1169,20 @@ local function check_success(success, timed_out)
     end
 end
 
+local function upload_config()
+    http.request('POST', atelier_api, generate_uploadconfig_parameters(userinfo), function(success, response)
+        if not(check_success(success, response.timed_out)) then
+            return
+        end
+
+        if(check_response(response.body) == false) then
+            return
+        end
+
+        extra_log({0, 255, 0, "Successfully uploaded the config to the server for your role."})
+    end)
+end
+
 -- library functions end
 
 -- read creds
@@ -1122,18 +1206,21 @@ local menu_items =  {
     username = ui.new_label('CONFIG', 'Presets', ' '),
     role = ui.new_label('CONFIG', 'Presets', ' '),
     scripts_loaded = ui.new_label('CONFIG', 'Presets', ' '),
+    last_config_update = ui.new_label('CONFIG', 'Presets', ' '),
+    upload_config = ui.new_button('CONFIG', 'Presets', 'Upload config', upload_config),
     footer = ui.new_label('CONFIG', 'Presets', "〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓"),
 }
 
 local function set_visible(boolean)
     for i, v in pairs(menu_items) do
-        if not(v == nil) then
+        if not(v == nil and ui.name(v) == 'Upload config') then
             ui.set_visible(v, boolean)
         end
     end
 end
 
 set_visible(false)
+ui.set_visible(menu_items.upload_config, false)
 
 -- menu items end
 
@@ -1162,60 +1249,78 @@ local function get_config()
 end
 
 local function get_lualist()
-    
--- lua scripts list getting
 
-http.request('GET', atelier_api, generate_getlist_parameters(userinfo), function(success, response)
-    if not(check_success(success, response.timed_out)) then
-        return
-    end
+    -- lua scripts list getting
 
-    if(check_response(response.body) == false) then
-        return
-    end
-
-    local data = split(decrypt(response.body, static_key, random_key), "\n")
-    userinfo.role = data[1]
-
-    for i, v in pairs(data) do
-        if(i ~= 1) then
-            lualist[i - 1] = v
+    http.request('GET', atelier_api, generate_getlist_parameters(userinfo), function(success, response)
+        if not(check_success(success, response.timed_out)) then
+            return
         end
-    end
 
-    ui.set(menu_items.username, "| Username: " .. userinfo.username)
-    ui.set(menu_items.role, "| Role: " .. userinfo.role)
-    ui.set(menu_items.scripts_loaded, "| " ..  table.getn(lualist) .. " script(s) loaded.")
+        if(check_response(response.body) == false) then
+            return
+        end
 
-    set_visible(true)
+        local data = split(decrypt(response.body, static_key, random_key), "\n")
+        local json_data = json.parse(data[1])
 
-    menu_items.scripts = ui.new_multiselect('CONFIG', 'Presets', '| VEL Scripts', lualist)
+        userinfo.role = json_data["role"]
+        userinfo.owned_role = json_data["ownedRole"]
 
-    local enabled = loadconfig()
-    ui.set(menu_items.scripts, enabled)
+        information.changelog = json_data["changelog"]
+        information.news = json_data["news"]
+        information.last_config_update = json_data["configLastUpdate"]
 
-    package.vel_username = userinfo.username
-    package.vel_version = vel.version
+        print_information()
 
-    local function load_scripts()
-        local enabled_scripts = ui.get(menu_items.scripts)
-        for _,v  in pairs(enabled_scripts) do
-            if not(isloaded(v)) then
-                if(is_include(lualist, v)) then 
-                    loadscript(v)
-                end
+        if(userinfo.owned_role == userinfo.role) then
+            userinfo.role = userinfo.role .. " (Owner)"
+        end
+
+        for i, v in pairs(data) do
+            if(i ~= 1) then
+                lualist[i - 1] = v
             end
         end
 
-        saveconfig(enabled_scripts)
-        config_needs_load = true
-    end
+        ui.set(menu_items.username, "| Username: " .. userinfo.username)
+        ui.set(menu_items.role, "| Role: " .. firstToUpper(userinfo.role))
+        ui.set(menu_items.scripts_loaded, "| " ..  table.getn(lualist) .. " script(s) loaded.")
+        ui.set(menu_items.last_config_update, "| Last config update: " .. information.last_config_update)
 
-    -- handle the callback
-    ui.set_callback(menu_items.scripts, load_scripts)
-    get_config()
-    load_scripts()
-end)
+        set_visible(true)
+
+        if(userinfo.owned_role == userinfo.role) then
+            ui.set_visible(menu_items.upload_config, true)
+        end
+
+        menu_items.scripts = ui.new_multiselect('CONFIG', 'Presets', '| VEL Scripts', lualist)
+
+        local enabled = loadconfig()
+        ui.set(menu_items.scripts, enabled)
+
+        package.vel_username = userinfo.username
+        package.vel_version = vel.version
+
+        local function load_scripts()
+            local enabled_scripts = ui.get(menu_items.scripts)
+            for _,v  in pairs(enabled_scripts) do
+                if not(isloaded(v)) then
+                    if(is_include(lualist, v)) then
+                        loadscript(v)
+                    end
+                end
+            end
+
+            saveconfig(enabled_scripts)
+            config_needs_load = true
+        end
+
+        -- handle the callback
+        ui.set_callback(menu_items.scripts, load_scripts)
+        get_config()
+        load_scripts()
+    end)
 end
 
 -- vel loader version checking start
@@ -1231,6 +1336,8 @@ http.request('GET', atelier_version, generate_getversion_parameters(), function(
         extra_log({255, 255, 255, "VEL Loader is the "},
                   {0, 255, 0, "latest"},
                   {255, 255, 255, " version"})
+
+        client.exec("clear")
 
         get_lualist()
     else

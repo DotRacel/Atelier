@@ -70,4 +70,10 @@ public class FileUtil {
             bos.close();
         }
     }
+
+    public static void bufferedWriteFile(File file, String string) throws IOException {
+        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file, false));
+        bufferedWriter.write(string);
+        bufferedWriter.close();
+    }
 }

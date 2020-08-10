@@ -55,9 +55,10 @@ public class ConsoleThread extends Thread {
                         logger.info("exit - 安全退出 Atelier 服务.");
                         logger.info("refresh - 刷新 Lua脚本池.");
                         logger.info("-");
-                        logger.info("createuser <用户名称> <alpha/premium> - 创建用户");
+                        logger.info("createuser <用户名称> <用户组> - 创建用户");
                         logger.info("deleteuser <用户名称> - 删除用户");
-                        logger.info("changerole <用户名称> <alpha/premium> - 修改用户账户类型");
+                        logger.info("changerole <用户名称> <用户组> - 修改用户账户类型");
+                        logger.info("setownedrole <用户名称> <用户组> - 修改用户管理权限所在的用户组");
                         logger.info("userinfo <用户名称> - 查看账户信息");
                         logger.info("resethwid <用户名称> - 重置账户HWID");
                         logger.info("exportcreds <用户名称> - 导出用户的证书文件");
@@ -83,7 +84,7 @@ public class ConsoleThread extends Thread {
                         database.createUser(arg[1], arg[2]);
                         break;
                     case "userinfo":
-                        if(arg.length != 2 && arg[1] != null){
+                        if(arg.length != 2 || arg[1] == null){
                             logger.error("指令用法错误，输入 'help' 获取更多帮助.");
                             break;
                         }
@@ -97,13 +98,14 @@ public class ConsoleThread extends Thread {
 
                         logger.info("用户名称: " + user.getUsername());
                         logger.info("用户密码: " + user.getPassword());
-                        logger.info("用户HWID: " + (user.getHwid().equalsIgnoreCase("") ? "未设置" : user.getHwid()));
+                        logger.info("用户HWID: " + (user.getHwid().isEmpty() ? "未设置" : user.getHwid()));
                         logger.info("用户类型: " + user.getRole().toUpperCase());
+                        logger.info("用户管理权限所在用户组: " + (user.getOwnedRole().isEmpty() ? "未设置" : user.getOwnedRole().toUpperCase()));
                         logger.info("用户状态: " + user.getUserStatus().toString());
 
                         break;
                     case "deleteuser":
-                        if(arg.length != 2 && arg[1] != null){
+                        if(arg.length != 2 || arg[1] != null){
                             logger.error("指令用法错误，输入 'help' 获取更多帮助.");
                             break;
                         }
@@ -117,6 +119,14 @@ public class ConsoleThread extends Thread {
                         }
 
                         database.changeRole(arg[1], arg[2]);
+                        break;
+                    case "setownedrole":
+                        if(arg.length != 3 || arg[1] == null || arg[2] == null){
+                            logger.error("指令用法错误，输入 'help' 获取更多帮助.");
+                            break;
+                        }
+
+                        database.setOwnedRole(arg[1], arg[2]);
                         break;
                     case "resethwid":
                         if(arg.length != 2 || arg[1] == null){
@@ -184,6 +194,8 @@ public class ConsoleThread extends Thread {
                     case "refresh":
                         Atelier.scriptLoader.refresh();
                         Atelier.configLoader.refresh();
+                        Atelier.informationLoader.refresh();
+
                         break;
                     case "createrole":
                         if(arg.length != 2 || arg[1] == null){

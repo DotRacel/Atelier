@@ -7,8 +7,12 @@ public class LoadedConfig {
     @Getter private final Role role;
     @Getter private final String text;
 
-    public LoadedConfig(Role role, String text){
+    @Getter private final long lastUpdate;
+
+    public LoadedConfig(Role role, String text, long lastUpdate){
         this.role = role;
         this.text = text;
+
+        this.lastUpdate = lastUpdate;
     }
 }

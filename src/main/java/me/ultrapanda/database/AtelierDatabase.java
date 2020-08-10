@@ -136,7 +136,7 @@ public class AtelierDatabase {
 
     public void createUser(String username, String role){
         if(isValidRole(role)){
-            User user = new User(username, StringUtil.generateRandomKey(crypto), role.toLowerCase(), "", UserStatus.AVAILABLE);
+            User user = new User(username, StringUtil.generateRandomKey(crypto), role.toLowerCase(), "", UserStatus.AVAILABLE, "");
             createUser(user);
         }else{
             logger.error("所提供的用户组名称不正确.");
@@ -162,6 +162,18 @@ public class AtelierDatabase {
         if(isValidRole(role)){
             if(getUserCollection().updateOne(Filters.eq("username", username), combine(set("role", role))).getModifiedCount() != 0){
                 logger.info("成功将用户 " + username + " 的账户类型修改为了 " + role.toUpperCase() + ".");
+            }else {
+                logger.warn("用户 " + username + "不存在.");
+            }
+        }else {
+            logger.error("提供了一个错误的用户组名称.");
+        }
+    }
+
+    public void setOwnedRole(String username, String role){
+        if(isValidRole(role)){
+            if(getUserCollection().updateOne(Filters.eq("username", username), combine(set("ownedRole", role))).getModifiedCount() != 0){
+                logger.info("成功将用户 " + username + " 的管理权限所在用户组修改为了 " + role.toUpperCase() + ".");
             }else {
                 logger.warn("用户 " + username + "不存在.");
             }
