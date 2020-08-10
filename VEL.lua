@@ -1,7 +1,7 @@
 client.exec("clear")
 
 local vel = {
-    version = "1.4",
+    version = "1.5",
     start_time = tostring(client.unix_time())
 }
 
