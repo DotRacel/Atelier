@@ -1104,6 +1104,8 @@ local function loadscript(scriptname)
         if(status) then
             extra_log({0, 255, 255, scriptname},
                      {255, 255, 255, " is successfully loaded from VEL server."})
+
+            config_needs_load = true
         else
             extra_log({255, 0, 0, "An error occured during loading script from VEL server. Please contact administrator."})
             print(error)
@@ -1179,6 +1181,7 @@ local function upload_config()
             return
         end
 
+        print(response.body)
         extra_log({0, 255, 0, "Successfully uploaded the config to the server for your role."})
     end)
 end
@@ -1213,8 +1216,10 @@ local menu_items =  {
 
 local function set_visible(boolean)
     for i, v in pairs(menu_items) do
-        if not(v == nil and ui.name(v) == 'Upload config') then
-            ui.set_visible(v, boolean)
+        if not(v == nil) then
+            if not(ui.name(v) == 'Upload config') then
+                ui.set_visible(v, boolean)
+            end
         end
     end
 end
@@ -1290,7 +1295,7 @@ local function get_lualist()
 
         set_visible(true)
 
-        if(userinfo.owned_role == userinfo.role) then
+        if(json_data["role"] == json_data["ownedRole"]) then
             ui.set_visible(menu_items.upload_config, true)
         end
 
@@ -1313,7 +1318,6 @@ local function get_lualist()
             end
 
             saveconfig(enabled_scripts)
-            config_needs_load = true
         end
 
         -- handle the callback

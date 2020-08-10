@@ -188,12 +188,14 @@ public class AtelierController {
                     }catch (IOException ioException){
                         logger.error("用户上传配置文件时发生未预料的错误!");
                         ioException.printStackTrace();
+                        ctx.text(ResponseStatus.INTERNAL_ERROR);
                     }
                     break;
             }
         }catch (Exception exception) {
             logger.error("出现未预料的错误!");
             exception.printStackTrace();
+            ctx.text(ResponseStatus.INTERNAL_ERROR);
         }
     }
 

@@ -15,7 +15,7 @@ public class AtelierWeb {
         blade.environment().set("com.blade.logger.showDate", false);
 
         blade.environment().set("http.gzip.enable", true);
-        blade.environment().set("app.devMode", false);
+        blade.environment().set("app.devMode", true);
     }
 
     public void start(){
