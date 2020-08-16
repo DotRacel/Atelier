@@ -105,7 +105,7 @@ public class ConsoleThread extends Thread {
 
                         break;
                     case "deleteuser":
-                        if(arg.length != 2 || arg[1] != null){
+                        if(arg.length != 2 || arg[1] == null){
                             logger.error("指令用法错误，输入 'help' 获取更多帮助.");
                             break;
                         }
